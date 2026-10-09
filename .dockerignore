@@ -1,0 +1,12 @@
+.git
+.github
+.devin
+.vscode
+target
+*.log
+*.iml
+Dockerfile
+docker-compose*.yml
+README*
+HELP.md
+fix_passwords*.sql

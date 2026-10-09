@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Détail Commande — ShopVibe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link th:href="@{/css/style.css}" rel="stylesheet"/>
+</head>
+<body>
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container py-5">
+    <div class="page-header">
+        <h1 class="page-title">📦 Détail Commande #<span th:text="${command.idCommand}"></span></h1>
+        <p class="page-subtitle" th:text="${#dates.format(command.commandDate,'dd/MM/yyyy HH:mm')}"></p>
+    </div>
+
+    <div class="row g-4">
+        <!-- Articles -->
+        <div class="col-lg-8">
+            <div class="cart-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Article</th>
+                            <th>Prix</th>
+                            <th>Qté</th>
+                            <th>Sous-total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="line : ${lines}">
+                            <td>
+                                <div class="cart-item-name" th:text="${line.article.description}"></div>
+                                <div class="cart-item-brand" th:text="${line.article.brand}"></div>
+                            </td>
+                            <td class="cart-price" th:text="${#numbers.formatDecimal(line.article.price,1,2) + ' €'}"></td>
+                            <td>
+                                <span class="badge bg-secondary rounded-pill" th:text="${line.quantity}"></span>
+                            </td>
+                            <td class="cart-subtotal" th:text="${#numbers.formatDecimal(line.subTotal,1,2) + ' €'}"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Récapitulatif -->
+        <div class="col-lg-4">
+            <div class="order-summary">
+                <div class="summary-title">📋 Récapitulatif</div>
+                <div class="summary-row">
+                    <span class="label">Sous-total</span>
+                    <span class="value" th:text="${#numbers.formatDecimal(command.totalAmount,1,2) + ' €'}"></span>
+                </div>
+                <div class="summary-row">
+                    <span class="label">Livraison</span>
+                    <span class="value" style="color:var(--success)">Gratuite</span>
+                </div>
+                <div class="summary-total">
+                    <span class="label">Total</span>
+                    <span class="value" th:text="${#numbers.formatDecimal(command.totalAmount,1,2) + ' €'}"></span>
+                </div>
+                <div class="summary-row">
+                    <span class="label">Statut</span>
+                    <span th:if="${command.payment != null}" class="status-paid">✅ Payée</span>
+                    <span th:unless="${command.payment != null}" class="status-pending">⏳ En attente</span>
+                </div>
+                <div class="summary-row">
+                    <span class="label">Mode paiement</span>
+                    <span th:if="${command.payment != null and command.payment.class.simpleName == 'PaypalPayment'}" class="badge bg-primary">🅿️ PayPal</span>
+                    <span th:if="${command.payment != null and command.payment.class.simpleName == 'CreditCardPayment'}" class="badge bg-dark">💳 Carte</span>
+                    <span th:if="${command.payment == null}" class="text-muted">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <form th:if="${command.payment == null}" 
+              method="post" 
+              th:action="@{/orders/{id}/cancel(id=${command.idCommand})}"
+              onsubmit="return confirm('Annuler cette commande ?')"
+              class="d-inline-block">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" class="btn-delete">Annuler la commande</button>
+        </form>
+        <a th:href="@{/orders}" class="btn-continue">← Retour aux commandes</a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

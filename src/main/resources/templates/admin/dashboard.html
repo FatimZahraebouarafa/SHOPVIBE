@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Administration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link th:href="@{/css/style.css}" rel="stylesheet"/>
+</head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="admin-header">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="fw-bold text-white">⚙️ Administration</h2>
+            <a th:href="@{/admin/articles/new}" class="btn-add-article">
+                ➕ Nouvel article
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Statistiques -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-label">Total commandes</div>
+                <div class="stat-value" th:text="${totalOrders}"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-label">Commandes payées</div>
+                <div class="stat-value" th:text="${paidOrders}"></div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-label">Revenu total</div>
+                <div class="stat-value" th:text="${#numbers.formatDecimal(totalRevenue,1,2) + ' €'}"></div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mb-4 fw-bold">📦 Gestion des articles</h3>
+    
+    <!-- Actions groupées -->
+    <div class="d-flex gap-3 mb-4">
+        <button onclick="bulkDelete()" class="btn-delete">
+            🗑️ Supprimer la sélection
+        </button>
+        <button onclick="bulkOutOfStock()" class="btn-edit">
+            🚫 Marquer sélection out of stock
+        </button>
+    </div>
+
+    <div class="admin-table">
+        <table>
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()"/></th>
+                    <th>#</th>
+                    <th>Marque</th>
+                    <th>Description</th>
+                    <th>Prix</th>
+                    <th>Stock</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="article : ${articles}">
+                    <td><input type="checkbox" class="article-checkbox" th:value="${article.idArticle}"/></td>
+                    <td th:text="${article.idArticle}"></td>
+                    <td>
+                        <span class="badge bg-secondary" th:text="${article.brand}"></span>
+                    </td>
+                    <td th:text="${article.description}"></td>
+                    <td class="cart-subtotal" th:text="${article.price + ' €'}"></td>
+                    <td>
+                        <span th:classappend="${article.stock < 5} ? 'text-danger' : 'text-success'" th:text="${article.stock}"></span>
+                    </td>
+                    <td class="d-flex gap-2">
+                        <a th:href="@{/admin/articles/edit/{id}(id=${article.idArticle})}" class="btn-edit">✏️ Modifier</a>
+                        <form method="post" th:action="@{/admin/articles/outofstock/{id}(id=${article.idArticle})}"
+                              th:if="${article.stock > 0}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="btn-delete" onclick="return confirm('Marquer comme out of stock ?')">🚫 Out of stock</button>
+                        </form>
+                        <form method="post" th:action="@{/admin/articles/delete/{id}(id=${article.idArticle})}">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button type="submit" class="btn-delete" onclick="return confirm('Supprimer cet article ?')">🗑️ Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Formulaire caché pour les actions groupées -->
+    <form id="bulkActionForm" method="post">
+        <input type="hidden" name="action" id="bulkAction"/>
+        <input type="hidden" name="ids" id="bulkIds"/>
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+    </form>
+
+    <script>
+        function toggleAllCheckboxes() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.article-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        }
+
+        function getSelectedIds() {
+            const checkboxes = document.querySelectorAll('.article-checkbox:checked');
+            return Array.from(checkboxes).map(cb => cb.value).join(',');
+        }
+
+        function bulkDelete() {
+            const ids = getSelectedIds();
+            if (!ids) {
+                alert('Veuillez sélectionner au moins un article');
+                return;
+            }
+            if (confirm('Supprimer les articles sélectionnés ?')) {
+                document.getElementById('bulkAction').value = 'delete';
+                document.getElementById('bulkIds').value = ids;
+                document.getElementById('bulkActionForm').action = '/admin/articles/bulk';
+                document.getElementById('bulkActionForm').submit();
+            }
+        }
+
+        function bulkOutOfStock() {
+            const ids = getSelectedIds();
+            if (!ids) {
+                alert('Veuillez sélectionner au moins un article');
+                return;
+            }
+            if (confirm('Marquer les articles sélectionnés comme out of stock ?')) {
+                document.getElementById('bulkAction').value = 'outofstock';
+                document.getElementById('bulkIds').value = ids;
+                document.getElementById('bulkActionForm').action = '/admin/articles/bulk';
+                document.getElementById('bulkActionForm').submit();
+            }
+        }
+    </script>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

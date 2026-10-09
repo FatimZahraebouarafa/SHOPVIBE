@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<nav th:fragment="navbar" class="navbar-premium">
+    <div class="container">
+        <div class="d-flex align-items-center justify-content-between w-100">
+
+            <!-- Logo -->
+            <a class="navbar-brand" th:href="@{/}">
+                SHOP<span>VIBE</span>
+            </a>
+
+            <!-- Navigation centrale -->
+            <div class="d-none d-lg-flex align-items-center gap-1">
+                <a class="nav-link" th:href="@{/articles}">Catalogue</a>
+                <a class="nav-link" th:href="@{/cart}"
+                   sec:authorize="isAuthenticated()">Panier</a>
+                <a class="nav-link" th:href="@{/orders}"
+                   sec:authorize="isAuthenticated()">Mes commandes</a>
+                <a th:href="@{/admin}"
+                   sec:authorize="hasRole('ADMIN')">
+                    <span class="badge-admin-nav">⚙ Admin</span>
+                </a>
+            </div>
+
+            <!-- Droite -->
+            <div class="d-flex align-items-center gap-3">
+                <span class="nav-user d-none d-md-block"
+                      sec:authorize="isAuthenticated()">
+                    👤 <span sec:authentication="name"></span>
+                </span>
+                <form th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <button type="submit" class="btn-nav-logout">
+                        Déconnexion
+                    </button>
+                </form>
+                <a th:href="@{/login}" class="btn-nav-login"
+                   sec:authorize="!isAuthenticated()">
+                    Se connecter
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>
+</body>
+</html>

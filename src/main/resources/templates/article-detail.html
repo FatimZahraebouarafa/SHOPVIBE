@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${article.description} + ' — ShopVibe'">Détail article</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <link th:href="@{/css/style.css}" rel="stylesheet"/>
+</head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="product-img-wrapper" style="height: 400px;">
+                <img th:src="${article.imageUrl}"
+                     th:alt="${article.description}"
+                     onerror="this.src='/images/default.jpg'"
+                     style="width: 100%; height: 100%; object-fit: contain; padding: 16px; border-radius: var(--radius);"/>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="product-detail-card">
+                <span class="badge bg-secondary mb-3" th:text="${article.brand}"></span>
+                <h1 class="product-detail-title" th:text="${article.description}"></h1>
+                <div class="product-detail-price" th:text="${#numbers.formatDecimal(article.price,1,2) + ' €'}"></div>
+                
+                <div class="product-detail-info mt-4">
+                    <div class="info-item">
+                        <span class="info-label">Stock:</span>
+                        <span th:classappend="${article.stock < 5} ? 'text-danger' : 'text-success'" th:text="${article.stock}"></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Catégorie:</span>
+                        <span th:text="${article.category != null ? article.category : 'tech'}"></span>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <form method="post" th:action="@{/cart/add}" class="d-flex gap-3">
+                        <input type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}"/>
+                        <input type="hidden" name="articleId"
+                               th:value="${article.idArticle}"/>
+                        <input type="number" name="quantity"
+                               value="1" min="1"
+                               th:max="${article.stock}"
+                               class="qty-input"/>
+                        <button type="submit" class="btn-add-cart flex-grow-1" th:disabled="${article.stock == 0}">
+                            🛒 Ajouter au panier
+                        </button>
+                    </form>
+                    <a th:href="@{/articles}" class="btn-back mt-3">
+                        ← Retour au catalogue
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
