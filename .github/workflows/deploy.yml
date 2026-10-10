@@ -62,3 +62,32 @@ jobs:
           tags: ecommerce:ci-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to AWS EC2
+    needs: docker
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to AWS EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # The Docker image must be published before this job runs.
+            # Replace this placeholder with your Docker Hub image.
+            docker pull fatimzahraebouarafa/shopvibe:latest
+
+            docker stop shopvibe-app || true
+            docker rm shopvibe-app || true
+
+            docker run -d \
+              --name shopvibe-app \
+              -p 80:8080 \
+              --restart always \
+              fatimzahraebouarafa/shopvibe:latest
+
+            docker image prune -f
