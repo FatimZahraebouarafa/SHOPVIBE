@@ -107,11 +107,13 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE_NAME,MYSQL_ROOT_PASSWORD
+          envs: IMAGE_NAME,MYSQL_ROOT_PASSWORD,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
           script_stop: true
           script: |
             set -eu
             cd "$HOME/shopvibe"
+            test -n "$IMAGE_NAME" || { echo "IMAGE_NAME est vide."; exit 1; }
+            test -n "$MYSQL_ROOT_PASSWORD" || { echo "MYSQL_ROOT_PASSWORD est vide."; exit 1; }
             printf 'APP_IMAGE=%s\nMYSQL_ROOT_PASSWORD=%s\nAPP_PORT=80\nMYSQL_PORT=3306\n' "$IMAGE_NAME" "$MYSQL_ROOT_PASSWORD" > .env
             if docker compose version >/dev/null 2>&1
             then
@@ -137,10 +139,27 @@ jobs:
               chmod +x "$HOME/bin/docker-compose"
               compose() { "$HOME/bin/docker-compose" "$@"; }
             fi
-            compose pull
-            compose up -d --no-build
+            compose version
+            compose config --quiet
+            if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]
+            then
+              printf '%s\n' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+            fi
+            compose pull || {
+              echo "Échec de récupération des images Docker. Vérifiez Docker Hub et IMAGE_NAME."
+              compose config
+              exit 1
+            }
+            compose up -d --no-build || {
+              echo "Échec du démarrage Compose. État des services :"
+              compose ps -a
+              compose logs --tail=100
+              exit 1
+            }
             compose ps
             docker image prune -f
         env:
           IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/shopvibe:latest
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
