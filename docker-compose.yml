@@ -1,48 +1,49 @@
+version: '3.8'
+
 services:
+  app:
+    image: ${APP_IMAGE:-fatimzahraebouarafa/shopvibe:latest}
+    container_name: ecommerce-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:8080"
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dbVentes?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ecommerce
+
   mysql:
     image: mysql:8.0
     container_name: ecommerce-mysql
     restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: dbVentes
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    environment:
+      MYSQL_DATABASE: dbVentes
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     networks:
       - ecommerce
-
-  app:
-    image: ${APP_IMAGE:-ecommerce:local}
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ecommerce-app
-    restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/dbVentes?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
-      SERVER_PORT: 8080
-    ports:
-      - "${APP_PORT:-8080}:8080"
-    networks:
-      - ecommerce
-
-volumes:
-  mysql_data:
 
 networks:
   ecommerce:
+    name: shopvibe_ecommerce
     driver: bridge
+
+volumes:
+  mysql_data:
+    name: shopvibe_mysql_data
