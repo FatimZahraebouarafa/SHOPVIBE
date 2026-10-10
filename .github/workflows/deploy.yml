@@ -113,9 +113,9 @@ jobs:
             set -eu
             cd "$HOME/shopvibe"
             printf 'APP_IMAGE=%s\nMYSQL_ROOT_PASSWORD=%s\nAPP_PORT=80\nMYSQL_PORT=3306\n' "$IMAGE_NAME" "$MYSQL_ROOT_PASSWORD" > .env
-            docker compose --env-file .env pull
-            docker compose --env-file .env up -d --no-build
-            docker compose --env-file .env ps
+            docker compose pull
+            docker compose up -d --no-build
+            docker compose ps
             docker image prune -f
         env:
           IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/shopvibe:latest
