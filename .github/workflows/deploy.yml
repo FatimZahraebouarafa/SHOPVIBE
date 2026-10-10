@@ -113,26 +113,33 @@ jobs:
             set -eu
             cd "$HOME/shopvibe"
             printf 'APP_IMAGE=%s\nMYSQL_ROOT_PASSWORD=%s\nAPP_PORT=80\nMYSQL_PORT=3306\n' "$IMAGE_NAME" "$MYSQL_ROOT_PASSWORD" > .env
-            if docker compose version >/dev/null 2>&1; then
-              COMPOSE="docker compose"
-            elif command -v docker-compose >/dev/null 2>&1; then
-              COMPOSE="docker-compose"
+            if docker compose version >/dev/null 2>&1
+            then
+              compose() { docker compose "$@"; }
+            elif command -v docker-compose >/dev/null 2>&1
+            then
+              compose() { docker-compose "$@"; }
             else
               mkdir -p "$HOME/bin"
-              case "$(uname -m)" in
-                x86_64) COMPOSE_ARCH="x86_64" ;;
-                aarch64|arm64) COMPOSE_ARCH="aarch64" ;;
-                *) echo "Architecture EC2 non supportée pour Docker Compose."; exit 1 ;;
-              esac
+              if [ "$(uname -m)" = "x86_64" ]
+              then
+                COMPOSE_ARCH="x86_64"
+              elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]
+              then
+                COMPOSE_ARCH="aarch64"
+              else
+                echo "Architecture EC2 non supportée pour Docker Compose."
+                exit 1
+              fi
               curl -fsSL \
                 "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-${COMPOSE_ARCH}" \
                 -o "$HOME/bin/docker-compose"
               chmod +x "$HOME/bin/docker-compose"
-              COMPOSE="$HOME/bin/docker-compose"
+              compose() { "$HOME/bin/docker-compose" "$@"; }
             fi
-            $COMPOSE pull
-            $COMPOSE up -d --no-build
-            $COMPOSE ps
+            compose pull
+            compose up -d --no-build
+            compose ps
             docker image prune -f
         env:
           IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/shopvibe:latest
