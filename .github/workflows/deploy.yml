@@ -139,29 +139,36 @@ jobs:
               chmod +x "$HOME/bin/docker-compose"
               compose() { "$HOME/bin/docker-compose" "$@"; }
             fi
+            echo "Docker Compose détecté :"
             if ! compose version
             then
               echo "Docker Compose est indisponible sur EC2."
               exit 1
             fi
-            if ! compose config --quiet >/tmp/shopvibe-compose-config.log 2>&1
+            echo "Validation de docker-compose.yml..."
+            if ! compose config >/tmp/shopvibe-compose-config.log 2>&1
             then
               echo "La configuration docker-compose.yml est invalide."
               sed -E 's/(MYSQL_ROOT_PASSWORD:).*/\1 [REDACTED]/g' /tmp/shopvibe-compose-config.log
               exit 1
             fi
+            echo "Configuration Compose valide."
             if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]
             then
+              echo "Connexion à Docker Hub..."
               if ! printf '%s\n' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
               then
                 echo "Connexion Docker Hub échouée. Vérifiez DOCKERHUB_USERNAME et DOCKERHUB_TOKEN."
                 exit 1
               fi
+              echo "Connexion Docker Hub réussie."
             fi
+            echo "Téléchargement des images..."
             compose pull || {
               echo "Échec de récupération des images Docker. Vérifiez Docker Hub et IMAGE_NAME."
               exit 1
             }
+            echo "Démarrage des conteneurs..."
             compose up -d --no-build || {
               echo "Échec du démarrage Compose. État des services :"
               compose ps -a
