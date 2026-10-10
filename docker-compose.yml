@@ -21,6 +21,7 @@ services:
       - ecommerce
 
   app:
+    image: ${APP_IMAGE:-ecommerce:local}
     build:
       context: .
       dockerfile: Dockerfile
