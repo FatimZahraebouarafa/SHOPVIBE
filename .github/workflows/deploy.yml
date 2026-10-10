@@ -110,7 +110,7 @@ jobs:
           envs: IMAGE_NAME,MYSQL_ROOT_PASSWORD,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
           script_stop: true
           script: |
-            set -eu
+            set -u
             cd "$HOME/shopvibe"
             test -n "$IMAGE_NAME" || { echo "IMAGE_NAME est vide."; exit 1; }
             test -n "$MYSQL_ROOT_PASSWORD" || { echo "MYSQL_ROOT_PASSWORD est vide."; exit 1; }
@@ -139,15 +139,27 @@ jobs:
               chmod +x "$HOME/bin/docker-compose"
               compose() { "$HOME/bin/docker-compose" "$@"; }
             fi
-            compose version
-            compose config --quiet
+            if ! compose version
+            then
+              echo "Docker Compose est indisponible sur EC2."
+              exit 1
+            fi
+            if ! compose config --quiet >/tmp/shopvibe-compose-config.log 2>&1
+            then
+              echo "La configuration docker-compose.yml est invalide."
+              sed -E 's/(MYSQL_ROOT_PASSWORD:).*/\1 [REDACTED]/g' /tmp/shopvibe-compose-config.log
+              exit 1
+            fi
             if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]
             then
-              printf '%s\n' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+              if ! printf '%s\n' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+              then
+                echo "Connexion Docker Hub échouée. Vérifiez DOCKERHUB_USERNAME et DOCKERHUB_TOKEN."
+                exit 1
+              fi
             fi
             compose pull || {
               echo "Échec de récupération des images Docker. Vérifiez Docker Hub et IMAGE_NAME."
-              compose config
               exit 1
             }
             compose up -d --no-build || {
@@ -156,8 +168,12 @@ jobs:
               compose logs --tail=100
               exit 1
             }
-            compose ps
-            docker image prune -f
+            if ! compose ps
+            then
+              echo "Les conteneurs Compose ne sont pas accessibles."
+              exit 1
+            fi
+            docker image prune -f || echo "Nettoyage des anciennes images ignoré."
         env:
           IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/shopvibe:latest
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
