@@ -106,11 +106,13 @@ jobs:
         env:
           IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/shopvibe:latest
           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: IMAGE_NAME,MYSQL_ROOT_PASSWORD
+          envs: IMAGE_NAME,MYSQL_ROOT_PASSWORD,DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
           script_stop: true
           script: |
             set -u
@@ -121,55 +123,40 @@ jobs:
 
             printf 'APP_IMAGE=%s\nMYSQL_ROOT_PASSWORD=%s\nAPP_PORT=80\nMYSQL_PORT=3306\n' "$IMAGE_NAME" "$MYSQL_ROOT_PASSWORD" > .env
 
-            if docker compose version >/dev/null 2>&1
-            then
-              compose() { docker compose "$@"; }
-            elif command -v docker-compose >/dev/null 2>&1
-            then
-              compose() { docker-compose "$@"; }
-            else
-              mkdir -p "$HOME/bin"
-              if [ "$(uname -m)" = "x86_64" ]
-              then
-                COMPOSE_ARCH="x86_64"
-              elif [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]
-              then
-                COMPOSE_ARCH="aarch64"
-              else
-                echo "Architecture EC2 non supportée pour Docker Compose."
-                exit 1
-              fi
-              curl -fsSL \
-                "https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-${COMPOSE_ARCH}" \
-                -o "$HOME/bin/docker-compose"
-              chmod +x "$HOME/bin/docker-compose"
-              compose() { "$HOME/bin/docker-compose" "$@"; }
-            fi
-
-            echo "Docker Compose détecté :"
-            if ! compose version
+            echo "Vérification de Docker Compose..."
+            if ! docker compose version
             then
               echo "Docker Compose est indisponible sur EC2."
               exit 1
             fi
 
-            echo "Téléchargement des images..."
-            if ! compose pull
+            test -n "$DOCKERHUB_USERNAME" || { echo "DOCKERHUB_USERNAME est vide."; exit 1; }
+            test -n "$DOCKERHUB_TOKEN" || { echo "DOCKERHUB_TOKEN est vide."; exit 1; }
+            echo "Connexion à Docker Hub..."
+            if ! printf '%s\n' "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
             then
-              echo "Échec de récupération des images Docker. Vérifiez Docker Hub et IMAGE_NAME."
-              compose ps -a || true
-              exit 1
-            fi
-            echo "Démarrage des conteneurs..."
-            if ! compose up -d --no-build
-            then
-              echo "Échec du démarrage Compose. État des services :"
-              compose ps -a || true
-              compose logs --tail=100 || true
+              echo "Connexion Docker Hub échouée."
               exit 1
             fi
 
-            if ! compose ps
+            echo "Téléchargement des images..."
+            if ! docker compose pull
+            then
+              echo "Échec de récupération des images Docker : $IMAGE_NAME"
+              docker compose ps -a || true
+              exit 1
+            fi
+
+            echo "Démarrage des conteneurs..."
+            if ! docker compose up -d --no-build
+            then
+              echo "Échec du démarrage Compose. État des services :"
+              docker compose ps -a || true
+              docker compose logs --tail=100 || true
+              exit 1
+            fi
+
+            if ! docker compose ps
             then
               echo "Les conteneurs Compose ne sont pas accessibles."
               exit 1
