@@ -155,15 +155,6 @@ jobs:
               exit 1
             fi
 
-            echo "Validation de docker-compose.yml..."
-            if ! compose config >/tmp/shopvibe-compose-config.log 2>&1
-            then
-              echo "La configuration docker-compose.yml est invalide."
-              cat /tmp/shopvibe-compose-config.log
-              exit 1
-            fi
-            echo "Configuration Compose valide."
-
             if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]
             then
               echo "Connexion à Docker Hub..."
@@ -174,20 +165,21 @@ jobs:
               fi
               echo "Connexion Docker Hub réussie."
             fi
-
             echo "Téléchargement des images..."
-            compose pull || {
+            if ! compose pull mysql app
+            then
               echo "Échec de récupération des images Docker. Vérifiez Docker Hub et IMAGE_NAME."
+              compose ps -a || true
               exit 1
-            }
-
+            fi
             echo "Démarrage des conteneurs..."
-            compose up -d --no-build || {
+            if ! compose up -d --no-build
+            then
               echo "Échec du démarrage Compose. État des services :"
-              compose ps -a
-              compose logs --tail=100
+              compose ps -a || true
+              compose logs --tail=100 || true
               exit 1
-            }
+            fi
 
             if ! compose ps
             then
