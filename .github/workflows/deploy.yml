@@ -140,6 +140,7 @@ jobs:
             docker compose pull
 
             echo "Démarrage des conteneurs..."
+            docker compose down || true
             docker compose up -d
 
             docker compose ps
