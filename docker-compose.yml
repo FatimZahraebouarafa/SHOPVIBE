@@ -26,9 +26,9 @@ services:
       - "${MYSQL_PORT:-3306}:3306"
     environment:
       MYSQL_DATABASE: dbVentes
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -38,7 +38,6 @@ services:
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
     networks:
       - ecommerce
-
 networks:
   ecommerce:
     name: shopvibe_ecommerce
